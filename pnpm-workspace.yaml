@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - vite-plugin-monkey@8.0.6

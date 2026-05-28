@@ -1,0 +1,28 @@
+.filter {
+  display: flex;
+  flex-direction: row;
+
+  label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid gray;
+
+    &.pending {
+      background-color: #88888820;
+    }
+
+    &.running {
+      background-color: #0000ff20;
+    }
+
+    &.failure {
+      background-color: #ff000020;
+    }
+
+    &.success {
+      background-color: #00ff0020;
+    }
+  }
+}
