@@ -1,5 +1,5 @@
-import { Manifest } from "../domains/manifest";
-import { Task } from "../domains/task";
+import { Manifest } from "@/domains/manifest";
+import { Task } from "@/domains/task";
 
 export interface Adapter {
   matched(): boolean;

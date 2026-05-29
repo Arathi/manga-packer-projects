@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
 import monkey, { cdn } from "vite-plugin-monkey";
@@ -6,6 +7,11 @@ import monkey, { cdn } from "vite-plugin-monkey";
 export default defineConfig({
   server: {
     port: 45551,
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
   },
   plugins: [
     preact(),

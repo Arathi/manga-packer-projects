@@ -1,28 +1,36 @@
+import { useComputed } from "@preact/signals";
+import { downloadZip } from "client-zip";
 import { ComponentChildren } from "preact";
-import styles from "./app.module.scss";
+import { GM } from "$";
+
+import { TelegraphAdapter } from "./adapters/telegraph";
 import TotalProgress from "./components/total-progress";
 import Filter from "./components/filter";
-import { GM } from "$";
-import { TelegraphAdapter } from "./adapters/telegraph";
-import { manifest } from "./signals/manifest";
-import { useComputed } from "@preact/signals";
 import { Task, TaskStatus } from "./domains/task";
-import TaskView from "./components/task-view";
-import { sleep } from "./utils";
-import { download } from "./utils/monkey/download";
+import { manifest } from "./signals/manifest";
 import { tasks, update } from "./signals/tasks";
-import { downloadZip, InputWithSizeMeta } from "client-zip";
+import TaskView from "./components/task-view";
+import { sleep } from "./utils/time";
+import { download } from "./utils/monkey/download";
+
+import styles from "./app.module.scss";
 
 const root = await navigator.storage.getDirectory();
 
 const App = () => {
   const version = GM.info.script.version;
 
+  const success = useComputed(
+    () => tasks.value.filter((it) => it.status === TaskStatus.Success).length,
+  );
+
   const fetchDisabled = false;
   const downloadDisabled = useComputed(() => {
     return tasks.value.length == 0;
   });
-  const packDisabled = false;
+  const packDisabled = useComputed(
+    () => tasks.value.length > 0 && success.value !== tasks.value.length,
+  );
 
   async function fetch() {
     const adapter = new TelegraphAdapter();
@@ -30,12 +38,34 @@ const App = () => {
     console.info(manifest.value);
     tasks.value = await adapter.tasks(manifest.value.id);
     console.info(tasks.value);
+
+    const dir = await root.getDirectoryHandle(manifest.value.id, {
+      create: true,
+    });
+
+    for await (const [name, fsHandle] of dir) {
+      if (fsHandle.kind === "file") {
+        const fileHandle = fsHandle as FileSystemFileHandle;
+        const file = await fileHandle.getFile();
+        const dot = name.lastIndexOf(".");
+        const fileName = name.substring(0, dot);
+        update({
+          id: `${manifest.value.id}-${fileName}`,
+          status: TaskStatus.Success,
+          loaded: file.size,
+          total: file.size,
+        });
+      }
+    }
   }
 
   async function downloadTasks() {
     for (const task of tasks.value) {
-      downloadTask(task);
-      await sleep(100);
+      const { status = TaskStatus.Pending } = task;
+      if (status === TaskStatus.Pending || status === TaskStatus.Failure) {
+        downloadTask(task);
+        await sleep(100);
+      }
     }
   }
 
@@ -83,7 +113,9 @@ const App = () => {
         break;
     }
 
-    const dir = await root.getDirectoryHandle(manifest.value.id, { create: true });
+    const dir = await root.getDirectoryHandle(manifest.value.id, {
+      create: true,
+    });
     const fileName = `${task.fileName}${ext}`;
     const file = await dir.getFileHandle(fileName, { create: true });
     const writer = await file.createWritable();
@@ -97,11 +129,15 @@ const App = () => {
       return;
     }
 
-    const dir = await root.getDirectoryHandle(manifest.value.id, { create: false });
+    const dir = await root.getDirectoryHandle(manifest.value.id, {
+      create: true,
+    });
+
     const files: File[] = [];
-    for await (const [name, handle] of dir) {
-      if (handle.kind === "file") {
-        const file = await handle.getFile();
+    for await (const [name, fsHandle] of dir) {
+      if (fsHandle.kind === "file") {
+        const fileHandle = fsHandle as FileSystemFileHandle;
+        const file = await fileHandle.getFile();
         files.push(file);
       }
     }
@@ -110,7 +146,7 @@ const App = () => {
     console.info(`zip文件创建完成`, zip);
     GM.download({
       url: URL.createObjectURL(zip),
-      name: `${manifest.value.name}.zip`,
+      name: `${manifest.value.name}.cbz`,
     });
   }
 
@@ -126,7 +162,11 @@ const App = () => {
           <button type="button" onClick={fetch} disabled={fetchDisabled}>
             获取
           </button>
-          <button type="button" onClick={downloadTasks} disabled={downloadDisabled}>
+          <button
+            type="button"
+            onClick={downloadTasks}
+            disabled={downloadDisabled}
+          >
             下载
           </button>
           <button type="button" onClick={pack} disabled={packDisabled}>

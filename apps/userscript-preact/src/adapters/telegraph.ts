@@ -1,5 +1,5 @@
-import { Manifest } from "../domains/manifest";
-import { Task } from "../domains/task";
+import { Manifest } from "@/domains/manifest";
+import { Task } from "@/domains/task";
 import { Adapter } from "./adapter";
 
 const DOMAIN = "telegra.ph";
@@ -33,10 +33,14 @@ export class TelegraphAdapter implements Adapter {
   }
 
   async tasks(id: string): Promise<Task[]> {
-    const imgs = document.querySelectorAll<HTMLImageElement>("article#_tl_editor figure img");
+    const imgs = document.querySelectorAll<HTMLImageElement>(
+      "article#_tl_editor figure img",
+    );
+    const amount = imgs.length;
+    const fileNameLength = Math.ceil(Math.log10(amount + 1));
     const tasks: Task[] = [];
     imgs.forEach((img, index) => {
-      const fileName = `${index + 1}`.padStart(3, "0");
+      const fileName = `${index + 1}`.padStart(fileNameLength, "0");
       const url = img.src;
       tasks.push({
         id: `${id}-${fileName}`,

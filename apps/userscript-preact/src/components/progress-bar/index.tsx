@@ -7,6 +7,7 @@ export type Props = {
   min?: number;
   max?: number;
   items?: Item[];
+  height?: number;
 };
 
 type Item = {
@@ -15,7 +16,7 @@ type Item = {
 };
 
 const ProgressBar = (props: Props) => {
-  const { min = 0, max = 100, items = [] } = props;
+  const { min = 0, max = 100, items = [], height = 16 } = props;
 
   if (props.type == "progress" && props.value != null) {
     const delta = max - min;
@@ -30,7 +31,11 @@ const ProgressBar = (props: Props) => {
     const { color = "transparent", flex = 1 } = item;
     blocks.push(<div key={`item-${index}`} style={{ color, flex }} />);
   });
-  return <div className={styles["progress-bar"]}>{blocks}</div>;
+  return (
+    <div className={styles["progress-bar"]} style={{ height }}>
+      {blocks}
+    </div>
+  );
 };
 
 export default ProgressBar;
